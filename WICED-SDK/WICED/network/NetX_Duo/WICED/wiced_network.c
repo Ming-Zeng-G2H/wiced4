@@ -30,6 +30,7 @@
 #include "wwd_network_constants.h"
 #include "wiced_framework.h"
 #include "wwd_buffer_interface.h"
+#include "netx_bsd_layer/nxd_bsd.h"
 
 /******************************************************
  *                      Macros
@@ -59,17 +60,24 @@
 #endif /* WICED_USE_ETHERNET_INTERFACE */
 
 #ifndef TX_PACKET_POOL_SIZE
-#define TX_PACKET_POOL_SIZE         (7)
+#define TX_PACKET_POOL_SIZE         (8)
 #endif
 
 #ifndef RX_PACKET_POOL_SIZE
-#define RX_PACKET_POOL_SIZE         (7)
+#define RX_PACKET_POOL_SIZE         (8)
 #endif
+
+// BSD socket
+#define BSD_PACKET_POOL_SIZE        TX_PACKET_POOL_SIZE //(6)
+#define BSD_THREAD_STACK_SIZE       (2048)
+#define BSD_THREAD_PRIORITY         (2)
+
 
 #define NUM_BUFFERS_POOL_SIZE(x)    ((WICED_LINK_MTU_ALIGNED + sizeof(NX_PACKET)+1)*(x))
 
 #define APP_TX_BUFFER_POOL_SIZE     NUM_BUFFERS_POOL_SIZE(TX_PACKET_POOL_SIZE)
 #define APP_RX_BUFFER_POOL_SIZE     NUM_BUFFERS_POOL_SIZE(RX_PACKET_POOL_SIZE)
+#define BSD_BUFFER_POOL_SIZE        NUM_BUFFERS_POOL_SIZE(BSD_PACKET_POOL_SIZE)
 
 #define MAXIMUM_IP_ADDRESS_CHANGE_CALLBACKS           (2)
 
@@ -109,6 +117,11 @@ typedef struct
 /* consider instead of allocating more and then fixup pointer instruct compiler to align array */
 static uint8_t tx_buffer_pool_memory [APP_TX_BUFFER_POOL_SIZE + PLATFORM_L1_CACHE_BYTES];
 static uint8_t rx_buffer_pool_memory [APP_RX_BUFFER_POOL_SIZE + PLATFORM_L1_CACHE_BYTES];
+#define bsd_buffer_pool_memory tx_buffer_pool_memory
+//static uint8_t bsd_buffer_pool_memory[BSD_BUFFER_POOL_SIZE + PLATFORM_L1_CACHE_BYTES];
+
+static CHAR  bsd_thread_stack[BSD_THREAD_STACK_SIZE];
+
 
 #ifdef WICED_USE_WIFI_STA_INTERFACE
     static NX_IP  wifi_sta_ip_handle;
@@ -222,9 +235,12 @@ NX_IP* wiced_ip_handle[ 4 ] =
 };
 
 NX_PACKET_POOL wiced_packet_pools[ 2 ]; /* 0=TX, 1=RX */
+//NX_PACKET_POOL bsd_packet_pool;     // bsd packet pool
+#define bsd_packet_pool wiced_packet_pools[1]
 
 NX_PACKET_POOL wiced_application_tx_packet_pool;
 NX_PACKET_POOL wiced_application_rx_packet_pool;
+
 
 #ifdef AUTO_IP_ENABLED
 static NX_AUTO_IP auto_ip_handle;
@@ -278,6 +294,8 @@ static wiced_result_t wiced_link_down_handler( wiced_interface_t interface );
 
 static ULONG wiced_network_init_packet_pool( NX_PACKET_POOL* pool, const char* pool_name, uint8_t* memory_pointer, uint32_t memory_size );
 
+static wiced_result_t InitBSDsocket(wiced_interface_t interface);
+
 /******************************************************
  *               Function Definitions
  ******************************************************/
@@ -323,8 +341,26 @@ wiced_result_t wiced_network_deinit( void )
 {
     nx_packet_pool_delete(&wiced_packet_pools[0]);
     nx_packet_pool_delete(&wiced_packet_pools[1]);
+    //nx_packet_pool_delete(&bsd_packet_pool);
     wiced_rtos_deinit_mutex( &link_subscribe_mutex );
     return WICED_SUCCESS;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// InitBSDsocket
+///////////////////////////////////////////////////////////////////////////////
+static wiced_result_t InitBSDsocket(wiced_interface_t interface)
+{
+#if 0
+    // create bsd packet pool
+    if(nx_packet_pool_create(&bsd_packet_pool, (char *)"bsd", WICED_LINK_MTU, bsd_buffer_pool_memory, BSD_BUFFER_POOL_SIZE) != NX_SUCCESS)
+    {
+        WPRINT_NETWORK_ERROR(("Couldn't create BSD packet pool\r\n"));
+        return WICED_ERROR;
+    }
+#endif
+    return bsd_initialize (&IP_HANDLE(interface), &bsd_packet_pool,
+            bsd_thread_stack, BSD_THREAD_STACK_SIZE, BSD_THREAD_PRIORITY);
 }
 
 wiced_result_t wiced_network_create_packet_pool( uint8_t* memory_pointer, uint32_t memory_size, wiced_network_packet_dir_t direction )
@@ -376,12 +412,28 @@ wiced_result_t wiced_ip_up( wiced_interface_t interface, wiced_network_config_t 
     /* Enable the network interface  */
     if ( ( config == WICED_USE_STATIC_IP || config == WICED_USE_INTERNAL_DHCP_SERVER ) && ip_settings != NULL )
     {
-        status = nx_ip_create( &IP_HANDLE(interface), (char*)"NetX IP", GET_IPV4_ADDRESS(ip_settings->ip_address), GET_IPV4_ADDRESS(ip_settings->netmask), &wiced_packet_pools[0], DRIVER_FOR_IF( interface ), STACK_FOR_IF( interface ), IP_STACK_SIZE, 2 );
+        status = nx_ip_create( &IP_HANDLE(interface),
+                                (char*)"NetX IP",
+                                GET_IPV4_ADDRESS(ip_settings->ip_address),
+                                GET_IPV4_ADDRESS(ip_settings->netmask),
+                                &wiced_packet_pools[0],
+                                DRIVER_FOR_IF( interface ),
+                                STACK_FOR_IF( interface ),
+                                IP_STACK_SIZE,
+                                2 );
         nx_ip_gateway_address_set( &IP_HANDLE(interface), GET_IPV4_ADDRESS(ip_settings->gateway) );
     }
     else
     {
-        status = nx_ip_create( &IP_HANDLE(interface), (char*)"NetX IP", IP_ADDRESS(0, 0, 0, 0), 0xFFFFF000UL, &wiced_packet_pools[0], DRIVER_FOR_IF( interface ), STACK_FOR_IF( interface ), IP_STACK_SIZE, 2 );
+        status = nx_ip_create( &IP_HANDLE(interface),
+                               (char*)"NetX IP",
+                               IP_ADDRESS(0, 0, 0, 0),
+                               0xFFFFF000UL,
+                               &wiced_packet_pools[0],
+                               DRIVER_FOR_IF( interface ),
+                               STACK_FOR_IF( interface ),
+                               IP_STACK_SIZE,
+                               2 );
     }
 
     if ( status != NX_SUCCESS )
@@ -434,6 +486,15 @@ wiced_result_t wiced_ip_up( wiced_interface_t interface, wiced_network_config_t 
         goto leave_wifi_and_delete_ip;
     }
 
+    /////////////////
+    // BSD
+    /////////////////
+    if(InitBSDsocket(interface) != NX_SUCCESS)
+    {
+        WPRINT_NETWORK_ERROR(("Failed to initialize BSD socket.\r\n"));
+        return WICED_ERROR;
+    }
+
     /* Obtain an IP address via DHCP if required */
     if ( config == WICED_USE_EXTERNAL_DHCP_SERVER )
     {
@@ -469,6 +530,14 @@ wiced_result_t wiced_ip_up( wiced_interface_t interface, wiced_network_config_t 
         ULONG ip_address, network_mask;
         nx_ip_address_get( &IP_HANDLE(interface), &ip_address, &network_mask );
         WPRINT_NETWORK_INFO( ( "IPv4 network ready IP: %u.%u.%u.%u\n", (unsigned char) ( ( ip_address >> 24 ) & 0xff ), (unsigned char) ( ( ip_address >> 16 ) & 0xff ), (unsigned char) ( ( ip_address >> 8 ) & 0xff ), (unsigned char) ( ( ip_address >> 0 ) & 0xff ) ) );
+
+        status = nx_ip_interface_address_set(&IP_HANDLE(interface), 0, ip_address, network_mask );
+        if(status != NX_SUCCESS)
+        {
+            WPRINT_NETWORK_ERROR( ( "Unable to set IP address for interface\r\n" ) );
+            goto leave_wifi_and_delete_ip;
+        }
+
 
         /* Register a handler for any address changes */
         status = nx_ip_address_change_notify( &IP_HANDLE(interface), ip_address_changed_handler, NX_NULL );
@@ -1184,4 +1253,18 @@ static wiced_result_t wiced_network_resume_layers( wiced_interface_t interface )
     }
 
     return WICED_SUCCESS;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// SetupIPV6Address
+//    Need to setup the IPv6 address after device finished ND/RD
+///////////////////////////////////////////////////////////////////////////////
+void SetupIPV6Address(NXD_ADDRESS * global)
+{
+    // glabal address
+    UINT status = nxd_ipv6_global_address_set(&IP_HANDLE(WICED_STA_INTERFACE), global, 64);
+    if(status != NX_SUCCESS)
+    {
+        WPRINT_NETWORK_ERROR("Setup IPV6 Global address failed\r\n");
+    }
 }

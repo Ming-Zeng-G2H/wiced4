@@ -26,8 +26,7 @@
 #include "wiced.h"
 #include "nx_api.h"
 #include "tx_api.h"
-#include "netx_bsd_layer/nxd_bsd.h"
-#include "sys/fcntl.h"
+
 
 /******************************************************
  *                      Macros
@@ -53,6 +52,7 @@ int GetIPv4Address(void);
 void udp_send(void);
 void udp6_send(void);
 void tcp6_send(void);
+void CheckSocket(int sockfd);
 
 /******************************************************
  *               Variables Definitions
@@ -83,7 +83,11 @@ void application_start(void)
     Kitu_MulticastJoin();
 #endif
 
-    wiced_rtos_delay_milliseconds(20000);         // let ip stack be ready
+    wiced_rtos_delay_milliseconds(10000);         // let ip stack be ready
+
+    udp6_send();
+
+    tcp6_send();
 
     kitu_main(1, NULL);
 }
@@ -110,7 +114,7 @@ int GetIPv4Address(void)
         }
         else
         {
-            printf("Retriving IPv4 Address ...\r\n");
+            printf("Retrieving IPv4 Address ...\r\n");
 
             wiced_rtos_delay_milliseconds(500);         // try again later
         }
@@ -236,6 +240,7 @@ void Kitu_MulticastJoin(void)
 #include "netx_bsd_layer/nxd_bsd.h"
 
 uint16_t ISAL_Htons(uint16_t hostshort);
+uint32_t ISAL_Htonl(uint32_t hostlong);
 
 void udp_send(void)
 {
@@ -303,13 +308,15 @@ void udp_send(void)
 
 void tcp6_send(void)
 {
-    char buffer[256];
+    fd_set rd, wd, ed;
+    int count = 0;
+    struct timeval tv = {0};
     static int sockfd = -1;
     int code = -1;
 
     if(sockfd < 0)
     {
-        sockfd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+        sockfd = socket(AF_INET6, SOCK_STREAM, 0);//IPPROTO_TCP);
         if(sockfd < 0)
         {
           printf("DnsClientOpenSendSockets: socket failed\r\n");
@@ -335,7 +342,7 @@ void tcp6_send(void)
         if(code == -1)
         {
           printf("DnsClientOpenSendSockets: bind failed\r\n");
-          return;
+          goto SOC_ERROR;
         }
     }
 
@@ -343,16 +350,36 @@ void tcp6_send(void)
     struct sockaddr_in6    sRemoteAddr = {0};
     sRemoteAddr.sin6_family = AF_INET6;
     sRemoteAddr.sin6_port = ISAL_Htons(80); //2015:db6::29fb:4b58:d55a:f167
-    sRemoteAddr.sin6_addr._S6_un._S6_u32[0] = 0x20150db6;
+    sRemoteAddr.sin6_addr._S6_un._S6_u32[0] = ISAL_Htonl(0x20150db6);
     sRemoteAddr.sin6_addr._S6_un._S6_u32[1] = 0x0;
-    sRemoteAddr.sin6_addr._S6_un._S6_u32[2] = 0x7183cfae;
-    sRemoteAddr.sin6_addr._S6_un._S6_u32[3] = 0xca9715ce;
+    sRemoteAddr.sin6_addr._S6_un._S6_u32[2] = ISAL_Htonl(0x29fb4b58);
+    sRemoteAddr.sin6_addr._S6_un._S6_u32[3] = ISAL_Htonl(0xd55af167);
 
     code = connect(sockfd, (struct sockaddr *)&sRemoteAddr, sizeof(sRemoteAddr));
     if(code < 0)
     {
         printf("Connect error:%d\r\n", code);
-        return;
+        goto SOC_ERROR;
+    }
+
+    // select
+    FD_ZERO(&rd);FD_ZERO(&wd);FD_ZERO(&ed);
+    tv.tv_sec = 0;
+    tv.tv_usec = 1000;
+
+    while(!FD_ISSET(sockfd, &wd))
+    {
+		FD_SET(sockfd, &rd);FD_SET(sockfd, &wd);FD_SET(sockfd, &ed);
+
+		code = select(sockfd +1, &rd, &wd, &ed, &tv);
+		if(code > 0 && FD_ISSET(sockfd, &wd))
+			break;
+
+		if(count++ > 10)
+			break;
+		printf(">>> Select return:%d\r\n", code);
+        FD_ZERO(&rd);FD_ZERO(&wd);FD_ZERO(&ed);
+		tx_thread_sleep(1000);
     }
 
     code = send(sockfd, "ABCD", (strlen("ABCD") + 1), 0);
@@ -360,22 +387,22 @@ void tcp6_send(void)
     if(code < 0)
     {
         printf("Sendto error\r\n");
-        return;
+        goto SOC_ERROR;
     }
 
-    printf("Send message\r\n");
+    printf("Send TCP message\r\n");
 
-    // recv data
-    struct sockaddr_in6 from;
-    INT fromLen;
-    code = recvfrom(sockfd, buffer, 255, 0, (struct sockaddr *)&from, &fromLen);
-    if(code < 0)
-        printf("Recvfrom failed\r\n");
+SOC_ERROR:
+	CheckSocket(sockfd);
+    soc_close(sockfd);
 }
 
 void udp6_send(void)
 {
     char buffer[256];
+    fd_set rd, wd, ed;
+    struct timeval tv = {0};
+    int count = 0;
     static int sockfd = -1;
     int code = -1;
 
@@ -407,18 +434,38 @@ void udp6_send(void)
         if(code == -1)
         {
           printf("DnsClientOpenSendSockets: bind failed\r\n");
-          return;
+          goto UDP_ERROR;
         }
     }
 
     // send data
     struct sockaddr_in6    sRemoteAddr = {0};
     sRemoteAddr.sin6_family = AF_INET6;
-    sRemoteAddr.sin6_port = ISAL_Htons(5353); //"2015:0db6:0000:0000:7183:cfae:ca97:15ce"
-    sRemoteAddr.sin6_addr._S6_un._S6_u32[0] = 0x20150db6;
+    sRemoteAddr.sin6_port = ISAL_Htons(5353); //2015:db6::29fb:4b58:d55a:f167
+    sRemoteAddr.sin6_addr._S6_un._S6_u32[0] = ISAL_Htonl(0x20150db6);
     sRemoteAddr.sin6_addr._S6_un._S6_u32[1] = 0x0;
-    sRemoteAddr.sin6_addr._S6_un._S6_u32[2] = 0x7183cfae;
-    sRemoteAddr.sin6_addr._S6_un._S6_u32[3] = 0xca9715ce;
+    sRemoteAddr.sin6_addr._S6_un._S6_u32[2] = ISAL_Htonl(0x29fb4b58);
+    sRemoteAddr.sin6_addr._S6_un._S6_u32[3] = ISAL_Htonl(0xd55af167);
+
+    // select
+    FD_ZERO(&rd);FD_ZERO(&wd);FD_ZERO(&ed);
+    tv.tv_sec = 0;
+    tv.tv_usec = 1000;
+
+    while(!FD_ISSET(sockfd, &wd))
+    {
+		FD_SET(sockfd, &rd);FD_SET(sockfd, &wd);FD_SET(sockfd, &ed);
+
+		code = select(sockfd +1, &rd, &wd, &ed, &tv);
+		if(code > 0 && FD_ISSET(sockfd, &wd))
+			break;
+
+		if(count++ > 10)
+			break;
+		printf(">>> Select return:%d\r\n", code);
+        FD_ZERO(&rd);FD_ZERO(&wd);FD_ZERO(&ed);
+		tx_thread_sleep(1000);
+    }
 
     code = sendto(sockfd, "ABCD", (strlen("ABCD") + 1), 0,
                    (struct sockaddr *)&sRemoteAddr, sizeof(sRemoteAddr));
@@ -426,10 +473,10 @@ void udp6_send(void)
     if(code < 0)
     {
         printf("Sendto error\r\n");
-        return;
+        goto UDP_ERROR;
     }
 
-    printf("Send message\r\n");
+    printf("Send UDP message\r\n");
 
     // recv data
     struct sockaddr_in6 from;
@@ -437,6 +484,10 @@ void udp6_send(void)
     code = recvfrom(sockfd, buffer, 255, 0, (struct sockaddr *)&from, &fromLen);
     if(code < 0)
         printf("Recvfrom failed\r\n");
+
+    UDP_ERROR:
+	CheckSocket(sockfd);
+    soc_close(sockfd);
 }
 
 

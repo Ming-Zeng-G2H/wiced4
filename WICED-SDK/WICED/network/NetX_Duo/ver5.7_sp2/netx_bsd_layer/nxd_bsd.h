@@ -501,7 +501,7 @@
 typedef ULONG       time_t;
 #endif
 
-#ifndef __suseconds_t_defined
+#if 1//ndef __suseconds_t_defined
 typedef ULONG       suseconds_t;
 #endif /* ifndef __suseconds_t_defined */
 
