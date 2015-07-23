@@ -46,11 +46,16 @@ $(NAME)_SOURCES += ../../../../../gridwiz_sow4a/release/platform/kal/kbp_memory.
 
 $(NAME)_INCLUDES := -I ../../../../../gridwiz_sow4a/release/include -I ../../../../../gridwiz_sow4a/release/platform/include -I ../../../../../gridwiz_sow4a/release/apps/include -I ../../../../../gridwiz_sow4a/release/platform/kal
 
-$(NAME)_LINK_FILES := ../../../../../../../../gridwiz_sow4a/release/lib/g2hsep2_client6.o
-#$(NAME)_LINK_FILES := ../../../../../../../../gridwiz_sow4a/release/lib/g2hsep2_client4.o
-
-
 $(NAME)_CFLAGS   := -Wno-missing-braces -Wno-error=missing-braces -std=gnu99 \
 					-DWICED_DISABLE_MCU_POWERSAVE -DIPV6_CLIENT
+
+ifneq (,$(findstring IPV6_CLIENT, $($(NAME)_CFLAGS)))
+# These modules may only be enabled if IPV6_CLIENT is enabled
+$(NAME)_LINK_FILES := ../../../../../../../../gridwiz_sow4a/release/lib/g2hsep2_client6.o
+else
+$(NAME)_LINK_FILES := ../../../../../../../../gridwiz_sow4a/release/lib/g2hsep2_client4.o
+endif
+
+					
 
 WIFI_CONFIG_DCT_H := wifi_config_dct.h

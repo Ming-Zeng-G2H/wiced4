@@ -85,10 +85,6 @@ void application_start(void)
 
     wiced_rtos_delay_milliseconds(10000);         // let ip stack be ready
 
-    //udp6_send();
-
-    //tcp6_send();
-
     kitu_main(1, NULL);
 }
 
@@ -224,7 +220,7 @@ void Kitu_MulticastJoin(void)
 
     //inet_pton4(XMDNS_V4_ADDR, buf);
     ipaddr.version = WICED_IPV4;
-    ipaddr.ip.v4  = IP_ADDRESS(251, 255, 255, 239); //XMDNS_V4_ADDR;
+    ipaddr.ip.v4  = IP_ADDRESS(239, 255, 255, 251); //IP_ADDRESS(251, 255, 255, 239); //XMDNS_V4_ADDR;
 
     // join the multicast group
     ret = wiced_multicast_join(WICED_STA_INTERFACE, &ipaddr);
