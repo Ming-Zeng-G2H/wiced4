@@ -69,7 +69,7 @@
 
 // BSD socket
 //<1POOL>#define BSD_PACKET_POOL_SIZE        TX_PACKET_POOL_SIZE //(6)
-#define BSD_THREAD_STACK_SIZE       4096 //(2048)
+#define BSD_THREAD_STACK_SIZE       (2048)
 #define BSD_THREAD_PRIORITY         (2)
 
 
