@@ -126,7 +126,7 @@ extern NX_PACKET_POOL wiced_packet_pools[2]; /* 0=TX, 1=RX */
 /******************************************************
  *               Function Declarations
  ******************************************************/
-void SetupIPV6Address(NXD_ADDRESS * global);
+void SetupIPV6Address(NXD_ADDRESS * global, NXD_ADDRESS * group);
 
 extern wiced_bool_t wiced_network_interface_is_up( NX_IP* ip_handle );
 

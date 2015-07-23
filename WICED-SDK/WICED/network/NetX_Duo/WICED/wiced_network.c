@@ -60,24 +60,24 @@
 #endif /* WICED_USE_ETHERNET_INTERFACE */
 
 #ifndef TX_PACKET_POOL_SIZE
-#define TX_PACKET_POOL_SIZE         (8)
+#define TX_PACKET_POOL_SIZE         (16)
 #endif
 
 #ifndef RX_PACKET_POOL_SIZE
-#define RX_PACKET_POOL_SIZE         (8)
+//<1POOL>#define RX_PACKET_POOL_SIZE         (8)
 #endif
 
 // BSD socket
-#define BSD_PACKET_POOL_SIZE        TX_PACKET_POOL_SIZE //(6)
-#define BSD_THREAD_STACK_SIZE       (2048)
+//<1POOL>#define BSD_PACKET_POOL_SIZE        TX_PACKET_POOL_SIZE //(6)
+#define BSD_THREAD_STACK_SIZE       4096 //(2048)
 #define BSD_THREAD_PRIORITY         (2)
 
 
 #define NUM_BUFFERS_POOL_SIZE(x)    ((WICED_LINK_MTU_ALIGNED + sizeof(NX_PACKET)+1)*(x))
 
 #define APP_TX_BUFFER_POOL_SIZE     NUM_BUFFERS_POOL_SIZE(TX_PACKET_POOL_SIZE)
-#define APP_RX_BUFFER_POOL_SIZE     NUM_BUFFERS_POOL_SIZE(RX_PACKET_POOL_SIZE)
-#define BSD_BUFFER_POOL_SIZE        NUM_BUFFERS_POOL_SIZE(BSD_PACKET_POOL_SIZE)
+//<1POOL>#define APP_RX_BUFFER_POOL_SIZE     NUM_BUFFERS_POOL_SIZE(RX_PACKET_POOL_SIZE)
+//<1POOL>#define BSD_BUFFER_POOL_SIZE        NUM_BUFFERS_POOL_SIZE(BSD_PACKET_POOL_SIZE)
 
 #define MAXIMUM_IP_ADDRESS_CHANGE_CALLBACKS           (2)
 
@@ -116,8 +116,8 @@ typedef struct
 
 /* consider instead of allocating more and then fixup pointer instruct compiler to align array */
 static uint8_t tx_buffer_pool_memory [APP_TX_BUFFER_POOL_SIZE + PLATFORM_L1_CACHE_BYTES];
-static uint8_t rx_buffer_pool_memory [APP_RX_BUFFER_POOL_SIZE + PLATFORM_L1_CACHE_BYTES];
-#define bsd_buffer_pool_memory tx_buffer_pool_memory
+//<1POOL>static uint8_t rx_buffer_pool_memory [APP_RX_BUFFER_POOL_SIZE + PLATFORM_L1_CACHE_BYTES];
+//<1POOL>#define bsd_buffer_pool_memory tx_buffer_pool_memory
 //static uint8_t bsd_buffer_pool_memory[BSD_BUFFER_POOL_SIZE + PLATFORM_L1_CACHE_BYTES];
 
 static CHAR  bsd_thread_stack[BSD_THREAD_STACK_SIZE];
@@ -236,7 +236,7 @@ NX_IP* wiced_ip_handle[ 4 ] =
 
 NX_PACKET_POOL wiced_packet_pools[ 2 ]; /* 0=TX, 1=RX */
 //NX_PACKET_POOL bsd_packet_pool;     // bsd packet pool
-#define bsd_packet_pool wiced_packet_pools[1]
+//<1POOL>#define bsd_packet_pool wiced_packet_pools[1]
 
 NX_PACKET_POOL wiced_application_tx_packet_pool;
 NX_PACKET_POOL wiced_application_rx_packet_pool;
@@ -315,12 +315,13 @@ wiced_result_t wiced_network_init( void )
         WPRINT_NETWORK_ERROR(("Couldn't create TX packet pool\n"));
         return WICED_ERROR;
     }
+#if 0 //<1POOL>
     if ( wiced_network_init_packet_pool( &wiced_packet_pools[1], "", rx_buffer_pool_memory, sizeof(rx_buffer_pool_memory) ) != NX_SUCCESS )
     {
         WPRINT_NETWORK_ERROR(("Couldn't create RX packet pool\n"));
         return WICED_ERROR;
     }
-
+#endif
     memset(&internal_dhcp_server, 0, sizeof(internal_dhcp_server));
     memset(wiced_ip_address_change_callbacks, 0, MAXIMUM_IP_ADDRESS_CHANGE_CALLBACKS * sizeof(wiced_ip_address_change_callback_t));
 
@@ -340,7 +341,7 @@ wiced_result_t wiced_network_init( void )
 wiced_result_t wiced_network_deinit( void )
 {
     nx_packet_pool_delete(&wiced_packet_pools[0]);
-    nx_packet_pool_delete(&wiced_packet_pools[1]);
+    //<1POOL>nx_packet_pool_delete(&wiced_packet_pools[1]);
     //nx_packet_pool_delete(&bsd_packet_pool);
     wiced_rtos_deinit_mutex( &link_subscribe_mutex );
     return WICED_SUCCESS;
@@ -359,7 +360,7 @@ static wiced_result_t InitBSDsocket(wiced_interface_t interface)
         return WICED_ERROR;
     }
 #endif
-    return bsd_initialize (&IP_HANDLE(interface), &bsd_packet_pool,
+    return bsd_initialize (&IP_HANDLE(interface), &wiced_packet_pools[0],
             bsd_thread_stack, BSD_THREAD_STACK_SIZE, BSD_THREAD_PRIORITY);
 }
 
@@ -1259,7 +1260,7 @@ static wiced_result_t wiced_network_resume_layers( wiced_interface_t interface )
 // SetupIPV6Address
 //    Need to setup the IPv6 address after device finished ND/RD
 ///////////////////////////////////////////////////////////////////////////////
-void SetupIPV6Address(NXD_ADDRESS * global)
+void SetupIPV6Address(NXD_ADDRESS * global, NXD_ADDRESS * group)
 {
     // glabal address
     UINT status = nxd_ipv6_global_address_set(&IP_HANDLE(WICED_STA_INTERFACE), global, 64);
@@ -1267,4 +1268,11 @@ void SetupIPV6Address(NXD_ADDRESS * global)
     {
         WPRINT_NETWORK_ERROR("Setup IPV6 Global address failed\r\n");
     }
+
+    // join multicast
+    status = nxd_ipv6_multicast_interface_join(&IP_HANDLE(WICED_STA_INTERFACE), group, WICED_STA_INTERFACE);
+    if(status != NX_SUCCESS)
+        printf("Join Multicast group failed:%d\r\n", status);
+    else
+        printf("Join Multicast group success\r\n");
 }

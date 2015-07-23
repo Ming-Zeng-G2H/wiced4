@@ -31,7 +31,8 @@ wwd_result_t host_buffer_init( void * pools_in )
 {
     wiced_assert("Error: Invalid buffer pools\n", pools_in != NULL);
     tx_pool = &( (NX_PACKET_POOL*) pools_in )[0];
-    rx_pool = &( (NX_PACKET_POOL*) pools_in )[1];
+    //<1POOL>rx_pool = &( (NX_PACKET_POOL*) pools_in )[1];
+    rx_pool = &( (NX_PACKET_POOL*) pools_in )[0];
 
     return WWD_SUCCESS;
 }

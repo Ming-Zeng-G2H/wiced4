@@ -43,7 +43,7 @@
 extern int  kitu_main(int argc, char*  argv[]);
 extern void ISAL_Init(uint8_t * ipaddr);
 extern int  inet_pton4(const char *src, uint8_t *dst);
-extern void SetupIPV6Address(NXD_ADDRESS * global);
+extern void SetupIPV6Address(NXD_ADDRESS * global, NXD_ADDRESS * group);
 
 void Kitu_MulticastJoin(void);
 int GetIPv6Address(void);
@@ -79,15 +79,15 @@ void application_start(void)
     GetIPv6Address();
 #else
     GetIPv4Address();
-    // for IPv4
+
     Kitu_MulticastJoin();
 #endif
 
     wiced_rtos_delay_milliseconds(10000);         // let ip stack be ready
 
-    udp6_send();
+    //udp6_send();
 
-    tcp6_send();
+    //tcp6_send();
 
     kitu_main(1, NULL);
 }
@@ -192,7 +192,17 @@ int GetIPv6Address(void)
     gaddr.nxd_ip_version = NX_IP_VERSION_V6;
     memcpy(&gaddr.nxd_ip_address, &g_address.ip, 16);
 
-    SetupIPV6Address(&gaddr);
+    // multicast group
+    NXD_ADDRESS group;
+    group.nxd_ip_version = NX_IP_VERSION_V6;
+
+    group.nxd_ip_address.v6[0] = 0xFF020000;    // 0xFF050000
+    group.nxd_ip_address.v6[1] = 0;
+    group.nxd_ip_address.v6[2] = 0;
+    group.nxd_ip_address.v6[3] = 0xFB;
+
+    // setup ip address and multicast group
+    SetupIPV6Address(&gaddr, &group);
 
     /* Wait for IPv6 stack to finish DAD process. */
     tx_thread_sleep(400);
@@ -208,8 +218,7 @@ void Kitu_MulticastJoin(void)
 {
     // convert ip address
     wiced_ip_address_t ipaddr = {0};
-    //uint8_t buf[16];
-    //uint8_t n =0;
+    int ret;
 
     printf("Join xMDNS group\r\n");
 
@@ -218,11 +227,11 @@ void Kitu_MulticastJoin(void)
     ipaddr.ip.v4  = IP_ADDRESS(251, 255, 255, 239); //XMDNS_V4_ADDR;
 
     // join the multicast group
-    int ret = wiced_multicast_join(WICED_STA_INTERFACE, &ipaddr);
+    ret = wiced_multicast_join(WICED_STA_INTERFACE, &ipaddr);
     if( ret != WICED_SUCCESS)
         printf("Join Multicast group failed:%d\r\n", ret);
-
-    printf("Join Multicast group: %lX\r\n", ipaddr.ip.v4);
+    else
+        printf("Join Multicast group: %lX\r\n", ipaddr.ip.v4);
 }
 
 
@@ -319,7 +328,7 @@ void tcp6_send(void)
         sockfd = socket(AF_INET6, SOCK_STREAM, 0);//IPPROTO_TCP);
         if(sockfd < 0)
         {
-          printf("DnsClientOpenSendSockets: socket failed\r\n");
+          printf("tcp6_send: socket failed\r\n");
           return;
         }
 
@@ -341,7 +350,7 @@ void tcp6_send(void)
         int code = bind(sockfd, (struct sockaddr *)&sClientLocalAddr, sizeof(sClientLocalAddr));
         if(code == -1)
         {
-          printf("DnsClientOpenSendSockets: bind failed\r\n");
+          printf("tcp6_send: bind failed\r\n");
           goto SOC_ERROR;
         }
     }
@@ -369,9 +378,9 @@ void tcp6_send(void)
 
     while(!FD_ISSET(sockfd, &wd))
     {
-		FD_SET(sockfd, &rd);FD_SET(sockfd, &wd);FD_SET(sockfd, &ed);
+		FD_SET(sockfd, &wd);
 
-		code = select(sockfd +1, &rd, &wd, &ed, &tv);
+		code = select(sockfd +1, NULL, &wd, NULL, &tv);
 		if(code > 0 && FD_ISSET(sockfd, &wd))
 			break;
 
@@ -456,7 +465,7 @@ void udp6_send(void)
     {
 		FD_SET(sockfd, &rd);FD_SET(sockfd, &wd);FD_SET(sockfd, &ed);
 
-		code = select(sockfd +1, &rd, &wd, &ed, &tv);
+		code = select(sockfd +1, NULL, &wd, NULL, &tv);
 		if(code > 0 && FD_ISSET(sockfd, &wd))
 			break;
 
