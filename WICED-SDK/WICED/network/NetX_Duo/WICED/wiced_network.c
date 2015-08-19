@@ -60,7 +60,7 @@
 #endif /* WICED_USE_ETHERNET_INTERFACE */
 
 #ifndef TX_PACKET_POOL_SIZE
-#define TX_PACKET_POOL_SIZE         (16)
+#define TX_PACKET_POOL_SIZE         (8)
 #endif
 
 #ifndef RX_PACKET_POOL_SIZE

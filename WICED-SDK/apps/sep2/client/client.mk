@@ -41,8 +41,8 @@ $(NAME)_SOURCES += ../../../../../gridwiz_sow4a/release/platform/kal/kbp_memory.
 #           ../../../../../gridwiz_sow4a/release/platform/kal/kbp_alarm.c 
 		   
 #ISAL
-#$(NAME)_SOURCES += ../../../../../gridwiz_sow4a/release/platform/kal/isal_port_netx.c
-
+$(NAME)_SOURCES += ../../../../../gridwiz_sow4a/release/platform/isal/isal_port_netx.c
+#ISAL_INC  = -I release/platform/include -I $(WICED_WICED)/RTOS/ThreadX/ver5.6 -I $(WICED_WICED)/Network/NetX_Duo/ver5.7_sp2 -I $(WICED_WICED)/RTOS/ThreadX/ver5.6/Cortex_M3_M4/GCC
 
 $(NAME)_INCLUDES := -I ../../../../../gridwiz_sow4a/release/include -I ../../../../../gridwiz_sow4a/release/platform/include -I ../../../../../gridwiz_sow4a/release/apps/include -I ../../../../../gridwiz_sow4a/release/platform/kal
 
