@@ -725,7 +725,7 @@ INT  FD_ISSET(INT fd, fd_set *fdset);
 VOID FD_ZERO(fd_set *fdset);
 VOID set_errno(INT tx_errno);
 int _nxd_get_errno(void);
-#define errno (_nxd_get_errno())
+//#define errno (_nxd_get_errno())
 
 #endif  /* NXD_BSD_H */
 
