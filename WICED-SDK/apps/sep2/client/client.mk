@@ -47,7 +47,7 @@ $(NAME)_SOURCES += ../../../../../gridwiz_sow4a/release/platform/isal/isal_port_
 $(NAME)_INCLUDES := -I ../../../../../gridwiz_sow4a/release/include -I ../../../../../gridwiz_sow4a/release/platform/include -I ../../../../../gridwiz_sow4a/release/apps/include -I ../../../../../gridwiz_sow4a/release/platform/kal
 
 $(NAME)_CFLAGS   := -Wno-missing-braces -Wno-error=missing-braces -std=gnu99 \
-					-DWICED_DISABLE_MCU_POWERSAVE -DIPV6_CLIENT
+					-DWICED_DISABLE_MCU_POWERSAVE -DIPV4_CLIENT
 
 ifneq (,$(findstring IPV6_CLIENT, $($(NAME)_CFLAGS)))
 # These modules may only be enabled if IPV6_CLIENT is enabled

@@ -60,7 +60,7 @@
 #endif /* WICED_USE_ETHERNET_INTERFACE */
 
 #ifndef TX_PACKET_POOL_SIZE
-#define TX_PACKET_POOL_SIZE         (8)
+#define TX_PACKET_POOL_SIZE         (10)
 #endif
 
 #ifndef RX_PACKET_POOL_SIZE
@@ -69,8 +69,8 @@
 
 // BSD socket
 //<1POOL>#define BSD_PACKET_POOL_SIZE        TX_PACKET_POOL_SIZE //(6)
-#define BSD_THREAD_STACK_SIZE       (2048)
-#define BSD_THREAD_PRIORITY         (2)
+#define BSD_THREAD_STACK_SIZE       (4096)
+#define BSD_THREAD_PRIORITY         (4) //2
 
 
 #define NUM_BUFFERS_POOL_SIZE(x)    ((WICED_LINK_MTU_ALIGNED + sizeof(NX_PACKET)+1)*(x))
