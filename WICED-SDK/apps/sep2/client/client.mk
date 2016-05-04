@@ -18,6 +18,9 @@ $(NAME)_SOURCES := sep2_client.c \
 		   ../../../../../gridwiz_sow4a/release/apps/client/app_drlc_client.c \
 		   ../../../../../gridwiz_sow4a/release/apps/client/app_edev_client.c \
 		   ../../../../../gridwiz_sow4a/release/apps/client/app_edinfo_client.c \
+		   ../../../../../gridwiz_sow4a/release/apps/client/app_edev_client.c \
+		   ../../../../../gridwiz_sow4a/release/apps/client/app_edstat_client.c \
+		   ../../../../../gridwiz_sow4a/release/apps/client/app_epwrstat_client.c \
 		   ../../../../../gridwiz_sow4a/release/apps/client/app_flow_client.c \
 		   ../../../../../gridwiz_sow4a/release/apps/client/app_meter_client.c \
 		   ../../../../../gridwiz_sow4a/release/apps/client/app_meter_mirror_client.c \
@@ -51,9 +54,9 @@ $(NAME)_CFLAGS   := -Wno-missing-braces -Wno-error=missing-braces -std=gnu99 \
 
 ifneq (,$(findstring IPV6_CLIENT, $($(NAME)_CFLAGS)))
 # These modules may only be enabled if IPV6_CLIENT is enabled
-$(NAME)_LINK_FILES := ../../../../../../../../gridwiz_sow4a/release/lib/g2hsep2_client6.o
+$(NAME)_LINK_FILES := ../../../../../../../../gridwiz_sow4a/release/lib/kitu_sep2_client6_wiced.o
 else
-$(NAME)_LINK_FILES := ../../../../../../../../gridwiz_sow4a/release/lib/g2hsep2_client4.o
+$(NAME)_LINK_FILES := ../../../../../../../../gridwiz_sow4a/release/lib/kitu_sep2_client4_wiced.o
 endif
 
 					
