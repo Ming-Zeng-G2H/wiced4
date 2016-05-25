@@ -36,8 +36,8 @@
 #define SOFT_AP_CHANNEL      1
 
 /* This is the default AP the device will connect to (as a client) */
-#define CLIENT_AP_SSID       "dlink-test"
-#define CLIENT_AP_PASSPHRASE "1234512345"
+#define CLIENT_AP_SSID       "N300-test"
+#define CLIENT_AP_PASSPHRASE "1211234567"
 #define CLIENT_AP_BSS_TYPE   WICED_BSS_TYPE_INFRASTRUCTURE
 #define CLIENT_AP_SECURITY   WICED_SECURITY_WPA2_MIXED_PSK
 #define CLIENT_AP_CHANNEL    1

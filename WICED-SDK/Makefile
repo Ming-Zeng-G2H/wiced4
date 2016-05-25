@@ -70,6 +70,7 @@ Usage: make <target> [download] [run | debug] [JTAG=xxx] [no_dct]
       $> make snip.scan-BCM943362WCD4-ThreadX-NetX_Duo-SDIO
 	Sep2
       $> make sep2.client-BCM943362WCD4-ThreadX-NetX_Duo-SDIO
+	  $> make sep2.client-BCM943362WCD4-ThreadX-NetX_Duo-SDIO-debug download debug
 
     Build, Download and Run using the default USB-JTAG programming interface
       $> make snip.scan-BCM943362WCD4 download run
