@@ -43,7 +43,7 @@
 extern int  kitu_main(int argc, char*  argv[]);
 extern void ISAL_Init(uint8_t * ipaddr);
 extern int  inet_pton4(const char *src, uint8_t *dst);
-extern void SetupIPV6Address(NXD_ADDRESS * global, NXD_ADDRESS * group);
+extern void SetupIPV6Address(NXD_ADDRESS * global, NXD_ADDRESS * group, int scope);
 
 void Kitu_MulticastJoin(void);
 int GetIPv6Address(void);
@@ -151,10 +151,10 @@ int GetIPv6Address(void)
     {
         // first we try to get global ip address
         if ( (wiced_ip_get_ipv6_address( WICED_STA_INTERFACE,
-                     &g_address, IPv6_GLOBAL_ADDRESS ) == WICED_SUCCESS) &&
+                     &g_address, IPv6_LINK_LOCAL_ADDRESS ) == WICED_SUCCESS) &&
              ((g_address.ip.v6[0] & 0xFF000000)!= 0x0) )
         {
-            result = IPv6_GLOBAL_ADDRESS;
+            result = IPv6_LINK_LOCAL_ADDRESS;
         }
         else
         {
@@ -185,8 +185,8 @@ int GetIPv6Address(void)
     // set ipv6 address for NXD
     NXD_ADDRESS gaddr;
 
-    gaddr.nxd_ip_version = NX_IP_VERSION_V6;
-    memcpy(&gaddr.nxd_ip_address, &g_address.ip, 16);
+    memcpy(&gaddr, &g_address, sizeof(NXD_ADDRESS));
+    gaddr.nxd_ip_version = NX_IP_VERSION_V6;    // may not needed, but anyhow
 
     // multicast group
     NXD_ADDRESS group;
@@ -198,7 +198,7 @@ int GetIPv6Address(void)
     group.nxd_ip_address.v6[3] = 0xFB;
 
     // setup ip address and multicast group
-    SetupIPV6Address(&gaddr, &group);
+    SetupIPV6Address(&gaddr, &group, result);
 
     /* Wait for IPv6 stack to finish DAD process. */
     tx_thread_sleep(400);

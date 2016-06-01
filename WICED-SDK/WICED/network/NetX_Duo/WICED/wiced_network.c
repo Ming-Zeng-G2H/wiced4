@@ -1260,19 +1260,34 @@ static wiced_result_t wiced_network_resume_layers( wiced_interface_t interface )
 // SetupIPV6Address
 //    Need to setup the IPv6 address after device finished ND/RD
 ///////////////////////////////////////////////////////////////////////////////
-void SetupIPV6Address(NXD_ADDRESS * global, NXD_ADDRESS * group)
+void SetupIPV6Address(NXD_ADDRESS * global, NXD_ADDRESS * group, int scope)
 {
-    // glabal address
-    UINT status = nxd_ipv6_global_address_set(&IP_HANDLE(WICED_STA_INTERFACE), global, 64);
-    if(status != NX_SUCCESS)
+    UINT status = 0;
+    if(scope == IPv6_LINK_LOCAL_ADDRESS)  
+	{
+		#if 0
+        status = nxd_ipv6_linklocal_address_set(&IP_HANDLE(WICED_STA_INTERFACE), global);
+        if(status != NX_SUCCESS)
+        {
+            WPRINT_NETWORK_ERROR("Setup IPV6 Link Local address failed\r\n");
+        }
+		#endif
+    }
+    else // glabal address
     {
-        WPRINT_NETWORK_ERROR("Setup IPV6 Global address failed\r\n");
+        status = nxd_ipv6_global_address_set(&IP_HANDLE(WICED_STA_INTERFACE), global, 64);
+        if(status != NX_SUCCESS)
+        {
+            WPRINT_NETWORK_ERROR("Setup IPV6 Global address failed\r\n");
+        }
     }
 
     // join multicast
     status = nxd_ipv6_multicast_interface_join(&IP_HANDLE(WICED_STA_INTERFACE), group, WICED_STA_INTERFACE);
     if(status != NX_SUCCESS)
+	{
         printf("Join Multicast group failed:%d\r\n", status);
+	}
     else
         printf("Join Multicast group success\r\n");
 }

@@ -69,6 +69,8 @@ Usage: make <target> [download] [run | debug] [JTAG=xxx] [no_dct]
       $> make snip.scan-BCM943362WCD4
       $> make snip.scan-BCM943362WCD4-ThreadX-NetX_Duo-SDIO
 	Sep2
+	  Rebuild Openocd with --enable-jlink in configure option
+	  
       $> make sep2.client-BCM943362WCD4-ThreadX-NetX_Duo-SDIO
 	  $> make sep2.client-BCM943362WCD4-ThreadX-NetX_Duo-SDIO-debug download debug
 	  $> make sep2.client-BCM9WCDPLUS114-ThreadX-NetX_Duo-SDIO-debug download debug
